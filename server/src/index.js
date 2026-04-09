@@ -4,6 +4,8 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const { WebSocketServer } = require("ws");
+const path = require("path");
+const fs = require("fs");
 
 const connectDB = require("./config/db");
 const Message = require("./models/Message");
@@ -33,6 +35,22 @@ app.get("/messages", async (_req, res) => {
     res.status(500).json({ message: "Failed to fetch messages" });
   }
 });
+
+const clientDistPath = path.resolve(__dirname, "../../client/dist");
+const hasClientBuild = fs.existsSync(clientDistPath);
+
+if (hasClientBuild) {
+  app.use(express.static(clientDistPath));
+
+  app.get(/.*/, (req, res, next) => {
+    if (req.path.startsWith("/messages") || req.path === "/health") {
+      next();
+      return;
+    }
+
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
